@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Runnerbot</title>
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#7c3aed">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
+        .header {
+            text-align: center;
+            padding: 1.5rem 0;
+            border-bottom: 2px solid rgba(139,92,246,0.3);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(to right, #8b5cf6, #ec4899, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: rgba(139,92,246,0.1);
+            border: 2px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .tab:hover { border-color: #8b5cf6; }
+        .tab.active {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-color: #8b5cf6;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+        .status-indicator.connected { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+        .grid { display: grid; grid-template-columns: 350px 1fr; gap: 1rem; }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+        .panel {
+            background: rgba(15,12,41,0.9);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+        .panel h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: #a78bfa;
+        }
+        .btn {
+            width: 100%;
+            padding: 0.875rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+        .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(139,92,246,0.4); }
+        .btn-small { padding: 0.5rem 1rem; font-size: 0.85rem; width: auto; }
+        .model-list { margin-top: 1rem; max-height: 250px; overflow-y: auto; }
+        .model-card {
+            background: rgba(139,92,246,0.1);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s;
+        }
+        .model-card:hover { border-color: #8b5cf6; }
+        .model-card.loaded { background: rgba(34,197,94,0.15); border-color: #22c55e; }
+        .model-card h3 { font-size: 0.95rem; word-break: break-all; margin-bottom: 0.5rem; }
+        .model-card p { font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.75rem; }
+        .model-actions { display: flex; gap: 0.5rem; }
+        .model-actions button {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .chat-container { display: flex; flex-direction: column; height: 70vh; min-height: 500px; }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .message { margin-bottom: 1rem; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { text-align: right; }
+        .message-content {
+            display: inline-block;
+            max-width: 80%;
+            padding: 1rem;
+            border-radius: 12px;
+            text-align: left;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .message.user .message-content {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-bottom-right-radius: 4px;
+        }
+        .message.assistant .message-content {
+            background: rgba(51,51,51,0.9);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-bottom-left-radius: 4px;
+        }
+        .message.system .message-content {
+            background: rgba(6,182,212,0.1);
+            border: 1px solid #06b6d4;
+            max-width: 100%;
+            font-size: 0.9rem;
+        }
+        .input-container { display: flex; gap: 0.5rem; }
+        .input-container textarea {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.4);
+            color: white;
+            font-size: 1rem;
+            resize: none;
+            font-family: inherit;
+        }
+        .input-container textarea:focus { outline: none; border-color: #8b5cf6; }
+        .input-container button { padding: 0 1.5rem; width: auto; }
+        .upload-zone {
+            border: 2px dashed rgba(139,92,246,0.5);
+            border-radius: 12px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover { border-color: #8b5cf6; background: rgba(139,92,246,0.1); }
+        .upload-zone.dragover { border-color: #22c55e; background: rgba(34,197,94,0.1); }
+        .settings-grid { display: grid; gap: 1rem; margin-top: 1rem; }
+        .setting-item {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        .setting-item label { display: block; margin-bottom: 0.5rem; color: #cbd5e1; }
+        .setting-item input[type="range"] { width: 100%; accent-color: #8b5cf6; }
+        .loading-dots { display: flex; gap: 0.5rem; padding: 1rem; }
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            background: #8b5cf6;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } }
+        .empty-state { text-align: center; padding: 2rem; color: #64748b; }
+        .progress-bar {
+            height: 4px;
+            background: rgba(139,92,246,0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6, #ec4899);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        input[type="file"] { display: none; }
+        .code-output {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .code-textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 2px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.4);
+            color: #a78bfa;
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+        .code-textarea:focus { outline: none; border-color: #8b5cf6; }
+        .action-row { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .action-row .btn { flex: 1; min-width: 150px; }
+        select {
+            padding: 0.75rem;
+            border: 2px solid rgba(139,92,246,0.3);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.4);
+            color: white;
+            font-size: 1rem;
+        }
+        select:focus { outline: none; border-color: #8b5cf6; }
+        .search-box {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid rgba(139,92,246,0.3);
+            border-radius: 8px;
+            background: rgba(0,0,0,0.4);
+            color: white;
+            font-size: 1rem;
+        }
+        .search-box input:focus { outline: none; border-color: #8b5cf6; }
+        .file-card {
+            background: rgba(139,92,246,0.1);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-card:hover { border-color: #8b5cf6; }
+        .search-result {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(139,92,246,0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .search-result h4 { color: #a78bfa; margin-bottom: 0.5rem; }
+        .search-result pre {
+            background: rgba(0,0,0,0.3);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin-top: 0.5rem;
+        }
+        .learn-output {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><img src="/static/icon.png" alt="" style="height: 48px; vertical-align: middle; margin-right: 10px;">Runnerbot</h1>
+            <p>Run AI models from your local storage</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('chat')">Chat</div>
+            <div class="tab" onclick="switchTab('code')">Vibe Coding</div>
+            <div class="tab" onclick="switchTab('library')">Library</div>
+            <div class="tab" onclick="switchTab('memory')">Memory</div>
+            <div class="tab" onclick="switchTab('skills')">Skills</div>
+            <div class="tab" onclick="switchTab('agents')">Agents</div>
+            <div class="tab" onclick="switchTab('providers')">Providers</div>
+            <div class="tab" onclick="switchTab('files')">Files</div>
+            <div class="tab" onclick="switchTab('network')">Network</div>
+        </div>
+
+        <div class="status-bar">
+            <span class="status-indicator" id="statusIndicator"></span>
+            <span id="statusText">Checking connection...</span>
+            <span style="margin-left: auto; color: #94a3b8;" id="modelStatus">No model loaded</span>
+        </div>
+
+        <!-- Chat Tab -->
+        <div class="tab-content active" id="tab-chat">
+            <div class="grid">
+                <div>
+                    <div class="panel">
+                        <h2>Model Manager</h2>
+                        <div class="upload-zone" id="uploadZone">
+                            <p style="font-size: 1.5rem; margin-bottom: 0.5rem;">📁</p>
+                            <p>Drop GGUF model here</p>
+                            <p style="font-size: 0.85rem; color: #64748b;">or click to browse</p>
+                        </div>
+                        <input type="file" id="fileInput" accept=".gguf,.bin">
+                        <div id="uploadProgress" style="display: none;">
+                            <p style="font-size: 0.9rem;">Uploading...</p>
+                            <div class="progress-bar"><div class="progress-bar-fill" id="progressFill"></div></div>
+                        </div>
+                        <button class="btn btn-primary" onclick="refreshModels()">Refresh Models</button>
+                        <div class="model-list" id="modelList">
+                            <div class="empty-state">No models found</div>
+                        </div>
+                    </div>
+                    <div class="panel" style="margin-top: 1rem;">
+                        <h2>Settings</h2>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label>Temperature: <span id="tempValue">0.7</span></label>
+                                <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" oninput="document.getElementById('tempValue').textContent = this.value">
+                            </div>
+                            <div class="setting-item">
+                                <label>Max Tokens: <span id="tokensValue">2048</span></label>
+                                <input type="range" id="maxTokens" min="128" max="4096" step="128" value="2048" oninput="document.getElementById('tokensValue').textContent = this.value">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2>Chat</h2>
+                    <div class="chat-container">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message system">
+                                <div class="message-content">
+                                    Upload a GGUF model file and load it to start chatting.
+                                    <br><br><strong>Supported:</strong> GGUF, BIN files
+                                    <br><strong>Get models:</strong> Download from HuggingFace (TheBloke's quantized models)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="input-container" style="align-items: flex-end;">
+                            <textarea id="messageInput" placeholder="Type your message..." rows="3" style="min-height: 60px; resize: vertical; font-size: 1rem; line-height: 1.5;"></textarea>
+                            <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <button class="btn" id="micBtn" onclick="toggleVoiceInput()" title="Voice Input" style="background: #374151; min-width: 44px; height: 36px;">🎤</button>
+                                    <button class="btn" id="searchBtn" onclick="toggleChatSearch()" title="Web Search" style="background: #374151; min-width: 44px; height: 36px;">🔍</button>
+                                </div>
+                                <button class="btn btn-primary" id="sendBtn" onclick="sendMessage()" style="height: 36px; min-width: 80px;">Send</button>
+                            </div>
+                        </div>
+                        <div id="voiceStatus" style="display: none; color: #f59e0b; font-size: 0.85rem; margin-top: 0.25rem; text-align: center;">🔴 Listening... Click mic to stop</div>
+                        <div id="chatSearchBox" style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: #1e293b; border-radius: 8px;">
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="text" id="chatSearchQuery" placeholder="Search the web..." style="flex: 1; padding: 0.5rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;">
+                                <select id="chatSearchEngine" style="padding: 0.5rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;">
+                                    <option value="duckduckgo">DuckDuckGo</option>
+                                    <option value="google">Google</option>
+                                    <option value="bing">Bing</option>
+                                    <option value="brave">Brave</option>
+                                </select>
+                                <button class="btn btn-primary btn-small" onclick="chatWebSearch()">Search</button>
+                            </div>
+                            <div id="chatSearchResults" style="margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vibe Coding Tab -->
+        <div class="tab-content" id="tab-code">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Code Settings</h2>
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Language</label>
+                        <select id="codeLanguage" style="width: 100%;">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="html">HTML/CSS</option>
+                            <option value="rust">Rust</option>
+                            <option value="go">Go</option>
+                            <option value="c">C/C++</option>
+                            <option value="java">Java</option>
+                            <option value="sql">SQL</option>
+                            <option value="bash">Bash</option>
+                        </select>
+                    </div>
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Convert To</label>
+                        <select id="targetLanguage" style="width: 100%;">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="rust">Rust</option>
+                            <option value="go">Go</option>
+                            <option value="c">C/C++</option>
+                            <option value="java">Java</option>
+                        </select>
+                    </div>
+                    <p style="color: #94a3b8; font-size: 0.85rem;">
+                        <strong>Vibe Coding</strong> - AI-powered coding like Cursor & Replit
+                    </p>
+                    <div style="margin-top: 1rem;">
+                        <h3 style="color: #a78bfa; margin-bottom: 0.5rem;">Edit Instruction</h3>
+                        <input type="text" id="editInstruction" placeholder="e.g., Add error handling, Make it async..." style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2>Vibe Coding</h2>
+                    <textarea class="code-textarea" id="codeInput" placeholder="Enter code or describe what you want...&#10;&#10;For Generate: Describe what you want to build&#10;For other tools: Paste your code here"></textarea>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
+                        <button class="btn btn-primary" onclick="generateCode()" title="Generate code from description">Generate</button>
+                        <button class="btn btn-success" onclick="explainCode()" title="Explain what the code does">Explain</button>
+                        <button class="btn btn-warning" onclick="debugCode()" title="Find and fix bugs">Debug</button>
+                        <button class="btn" onclick="completeCode()" style="background: #06b6d4;" title="Continue/complete the code">Complete</button>
+                        <button class="btn" onclick="refactorCode()" style="background: #8b5cf6;" title="Improve code structure">Refactor</button>
+                        <button class="btn" onclick="optimizeCode()" style="background: #f59e0b;" title="Optimize for performance">Optimize</button>
+                        <button class="btn" onclick="documentCode()" style="background: #10b981;" title="Add comments and docs">Document</button>
+                        <button class="btn" onclick="reviewCode()" style="background: #ec4899;" title="Code review with suggestions">Review</button>
+                        <button class="btn" onclick="generateTests()" style="background: #6366f1;" title="Generate unit tests">Tests</button>
+                        <button class="btn" onclick="convertCode()" style="background: #14b8a6;" title="Convert to another language">Convert</button>
+                        <button class="btn" onclick="editCode()" style="background: #f97316;" title="Edit code with instruction">Edit</button>
+                        <button class="btn btn-danger" onclick="clearCodeOutput()" title="Clear output">Clear</button>
+                    </div>
+                    <div class="code-output" id="codeOutput" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div class="tab-content" id="tab-library">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Document Library</h2>
+                    <div class="upload-zone" id="libraryUploadZone">
+                        <p style="font-size: 1.5rem; margin-bottom: 0.5rem;">📚</p>
+                        <p>Drop files to add to library</p>
+                        <p style="font-size: 0.85rem; color: #64748b;">.txt, .md, .py, .js, .json, etc.</p>
+                    </div>
+                    <input type="file" id="libraryFileInput" accept=".txt,.md,.py,.js,.ts,.html,.css,.json,.csv,.xml,.yaml,.yml,.c,.cpp,.h,.java,.rs,.go,.sh,.bat,.sql,.r,.lua" multiple>
+                    <button class="btn btn-primary" onclick="refreshLibrary()">Refresh Library</button>
+                    <div class="model-list" id="libraryList">
+                        <div class="empty-state">No files in library</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2>Search & Learn</h2>
+                    <div class="search-box">
+                        <input type="text" id="searchQuery" placeholder="Search in library files...">
+                        <button class="btn btn-primary btn-small" onclick="searchLibrary()">Search</button>
+                    </div>
+                    <div id="searchResults"></div>
+                    
+                    <h2 style="margin-top: 1.5rem;">Ask AI About Your Files</h2>
+                    <textarea class="code-textarea" id="learnQuestion" style="min-height: 100px;" placeholder="Ask a question about your library files...&#10;&#10;Example: How does the main function work in my Python files?"></textarea>
+                    <button class="btn btn-success" onclick="learnFromLibrary()" style="margin-top: 0.5rem;">Ask AI</button>
+                    <div class="learn-output" id="learnOutput" style="display: none;"></div>
+                    
+                    <h2 style="margin-top: 1.5rem;">AI Teacher</h2>
+                    <p style="color: #94a3b8; margin-bottom: 0.5rem;">Learn any topic with an AI teacher. Includes voice reading!</p>
+                    <input type="text" id="teachTopic" placeholder="What would you like to learn? (e.g., Python loops, calculus basics)" style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(0,0,0,0.4); border: 2px solid rgba(139,92,246,0.3); border-radius: 8px; color: white;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div>
+                            <label style="font-size: 0.85rem; color: #94a3b8;">Level</label>
+                            <select id="teachLevel" style="width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0;">
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.85rem; color: #94a3b8;">Teaching Style</label>
+                            <select id="teachStyle" style="width: 100%; padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0;">
+                                <option value="friendly">Friendly & Encouraging</option>
+                                <option value="strict">Strict & Rigorous</option>
+                                <option value="socratic">Socratic (Questions)</option>
+                                <option value="storyteller">Storyteller</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn" onclick="teachMe()" style="background: #8b5cf6;">Teach Me</button>
+                        <button class="btn" onclick="speakLesson()" style="background: #10b981;" id="speakBtn">Read Aloud</button>
+                        <button class="btn" onclick="pauseSpeech()" style="background: #f59e0b;" id="pauseBtn">Pause</button>
+                        <button class="btn" onclick="stopSpeech()" style="background: #ef4444;">Stop</button>
+                        <select id="voiceSelect" style="padding: 0.5rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #e2e8f0; flex: 1; min-width: 150px;">
+                            <option value="">Default Voice</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">Speed: <span id="speedValue">1.0</span>x</label>
+                        <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1" style="width: 100%;" oninput="document.getElementById('speedValue').textContent = this.value">
+                    </div>
+                    <div class="learn-output" id="teachOutput" style="display: none; margin-top: 0.5rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory Tab -->
+        <div class="tab-content" id="tab-memory">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Add Memory</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Teach the AI facts about you. It will remember these across all conversations.</p>
+                    <textarea class="code-textarea" id="memoryInput" style="min-height: 100px;" placeholder="Enter a fact to remember...&#10;&#10;Example: I prefer Python over JavaScript&#10;My name is Alex and I work as a software developer"></textarea>
+                    <button class="btn btn-primary" onclick="addMemory()" style="margin-top: 0.5rem;">Add to Memory</button>
+                    <div style="margin-top: 1rem;">
+                        <h3 style="color: #a78bfa; margin-bottom: 0.5rem;">Context</h3>
+                        <textarea class="code-textarea" id="contextInput" style="min-height: 60px;" placeholder="Set overall context for the AI..."></textarea>
+                        <button class="btn btn-success btn-small" onclick="setContext()" style="margin-top: 0.5rem;">Save Context</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2>Stored Memories</h2>
+                    <button class="btn btn-primary" onclick="refreshMemory()">Refresh</button>
+                    <button class="btn btn-danger btn-small" onclick="clearMemory()" style="margin-left: 0.5rem;">Clear All</button>
+                    <div class="model-list" id="memoryList" style="margin-top: 1rem;">
+                        <div class="empty-state">No memories stored yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills Tab -->
+        <div class="tab-content" id="tab-skills">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Create Skill</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Skills are reusable AI prompts. Use {input} as placeholder.</p>
+                    <input type="text" id="skillName" placeholder="Skill Name" style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(0,0,0,0.4); border: 2px solid rgba(139,92,246,0.3); border-radius: 8px; color: white;">
+                    <input type="text" id="skillDescription" placeholder="Description" style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(0,0,0,0.4); border: 2px solid rgba(139,92,246,0.3); border-radius: 8px; color: white;">
+                    <textarea class="code-textarea" id="skillPrompt" style="min-height: 120px;" placeholder="Skill prompt template...&#10;&#10;Example: Translate the following text to Spanish: {input}"></textarea>
+                    <button class="btn btn-primary" onclick="createSkill()" style="margin-top: 0.5rem;">Create Skill</button>
+                </div>
+                <div class="panel">
+                    <h2>Your Skills</h2>
+                    <button class="btn btn-primary" onclick="refreshSkills()">Refresh Skills</button>
+                    <div class="model-list" id="skillsList" style="margin-top: 1rem;">
+                        <div class="empty-state">No skills created yet</div>
+                    </div>
+                    <div style="margin-top: 1.5rem; display: none;" id="skillExecutePanel">
+                        <h3 style="color: #a78bfa;">Execute Skill</h3>
+                        <select id="skillSelect" style="width: 100%; margin: 0.5rem 0;"></select>
+                        <textarea class="code-textarea" id="skillInput" style="min-height: 80px;" placeholder="Enter input for the skill..."></textarea>
+                        <button class="btn btn-success" onclick="executeSkill()" style="margin-top: 0.5rem;">Execute</button>
+                        <div class="code-output" id="skillOutput" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agents Tab -->
+        <div class="tab-content" id="tab-agents">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Create Agent</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Agents are AI personas with custom personalities.</p>
+                    <input type="text" id="agentName" placeholder="Agent Name" style="width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; background: rgba(0,0,0,0.4); border: 2px solid rgba(139,92,246,0.3); border-radius: 8px; color: white;">
+                    <textarea class="code-textarea" id="agentPersona" style="min-height: 120px;" placeholder="Agent persona/system prompt...&#10;&#10;Example: You are a friendly coding mentor who explains concepts in simple terms. Always provide code examples."></textarea>
+                    <button class="btn btn-primary" onclick="createAgent()" style="margin-top: 0.5rem;">Create Agent</button>
+                </div>
+                <div class="panel">
+                    <h2>Your Agents</h2>
+                    <button class="btn btn-primary" onclick="refreshAgents()">Refresh Agents</button>
+                    <div class="model-list" id="agentsList" style="margin-top: 1rem;">
+                        <div class="empty-state">No agents created yet</div>
+                    </div>
+                    <div style="margin-top: 1.5rem; display: none;" id="agentChatPanel">
+                        <h3 style="color: #a78bfa;">Chat with Agent</h3>
+                        <select id="agentSelect" style="width: 100%; margin: 0.5rem 0;"></select>
+                        <textarea class="code-textarea" id="agentMessage" style="min-height: 80px;" placeholder="Message to agent..."></textarea>
+                        <button class="btn btn-success" onclick="chatWithAgent()" style="margin-top: 0.5rem;">Send</button>
+                        <div class="learn-output" id="agentResponse" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Tab -->
+        <div class="tab-content" id="tab-files">
+            <div class="grid">
+                <div class="panel">
+                    <h2>File Browser</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Browse and access local files on your system.</p>
+                    <div class="search-box">
+                        <input type="text" id="filePath" value="." placeholder="Path to browse...">
+                        <button class="btn btn-primary btn-small" onclick="browseFiles()">Browse</button>
+                    </div>
+                    <button class="btn btn-success btn-small" onclick="goUp()" style="margin-bottom: 0.5rem;">Go Up</button>
+                    <div id="currentPath" style="color: #64748b; font-size: 0.85rem; margin-bottom: 0.5rem;"></div>
+                    <div class="model-list" id="fileList" style="max-height: 400px;">
+                        <div class="empty-state">Click Browse to view files</div>
+                    </div>
+                    
+                    <h3 style="color: #a78bfa; margin-top: 1.5rem; margin-bottom: 0.5rem;">AI File Search</h3>
+                    <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem;">Search files using natural language (requires loaded model or external provider)</p>
+                    <div class="search-box">
+                        <input type="text" id="aiFileSearch" placeholder="e.g., Find Python files with database connections...">
+                        <button class="btn btn-primary btn-small" onclick="aiSearchFiles()">AI Search</button>
+                    </div>
+                    <div id="aiSearchResults" style="margin-top: 0.5rem;"></div>
+                </div>
+                <div class="panel">
+                    <h2>File Preview</h2>
+                    <div id="filePreviewName" style="color: #a78bfa; margin-bottom: 0.5rem;"></div>
+                    <pre class="code-output" id="filePreview" style="display: none; max-height: 500px;"></pre>
+                    <div class="empty-state" id="filePreviewEmpty">Select a file to preview</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Providers Tab -->
+        <div class="tab-content" id="tab-providers">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Add External AI Provider</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Connect to cloud AI services. Tokens are stored locally and persist offline.</p>
+                    <div class="setting-item" style="margin-bottom: 0.75rem;">
+                        <label>Provider Name</label>
+                        <input type="text" id="providerName" placeholder="My ChatGPT" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                    <div class="setting-item" style="margin-bottom: 0.75rem;">
+                        <label>Provider Type</label>
+                        <select id="providerType" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                            <option value="openai">OpenAI / ChatGPT</option>
+                            <option value="anthropic">Anthropic / Claude</option>
+                            <option value="xai">xAI / Grok</option>
+                            <option value="custom">Custom (OpenAI-compatible)</option>
+                        </select>
+                    </div>
+                    <div class="setting-item" style="margin-bottom: 0.75rem;">
+                        <label>API Token / Key</label>
+                        <input type="password" id="providerToken" placeholder="sk-..." style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                    <div class="setting-item" style="margin-bottom: 0.75rem;">
+                        <label>Model (optional)</label>
+                        <input type="text" id="providerModel" placeholder="e.g., gpt-4, claude-3-opus-20240229" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                    <div class="setting-item" style="margin-bottom: 0.75rem;">
+                        <label>Custom Endpoint (optional)</label>
+                        <input type="text" id="providerEndpoint" placeholder="https://api.openai.com/v1/chat/completions" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                    <button class="btn btn-success" onclick="addProvider()">Add Provider</button>
+                    
+                    <div style="background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+                        <h4 style="color: #a78bfa; margin-bottom: 0.5rem;">Where to get API keys:</h4>
+                        <ul style="font-size: 0.85rem; color: #94a3b8; padding-left: 1.25rem;">
+                            <li><b>OpenAI/ChatGPT:</b> platform.openai.com/api-keys</li>
+                            <li><b>Anthropic/Claude:</b> console.anthropic.com</li>
+                            <li><b>xAI/Grok:</b> console.x.ai</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+                        <h4 style="color: #f59e0b; margin-bottom: 0.5rem;">Offline Alternatives (Use at your own risk)</h4>
+                        <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.75rem;">Cloud models cannot be downloaded. These open-source GGUF models provide similar capabilities for offline use:</p>
+                        <ul style="font-size: 0.85rem; color: #94a3b8; padding-left: 1.25rem;">
+                            <li><b>Instead of GPT-4:</b> <a href="https://huggingface.co/models?search=llama+3+gguf" target="_blank" style="color: #a78bfa;">Llama 3 70B GGUF</a></li>
+                            <li><b>Instead of GPT-3.5:</b> <a href="https://huggingface.co/models?search=mistral+7b+gguf" target="_blank" style="color: #a78bfa;">Mistral 7B GGUF</a></li>
+                            <li><b>Instead of Claude:</b> <a href="https://huggingface.co/models?search=llama+3+8b+gguf" target="_blank" style="color: #a78bfa;">Llama 3 8B GGUF</a></li>
+                            <li><b>Instead of Grok:</b> <a href="https://huggingface.co/models?search=qwen+gguf" target="_blank" style="color: #a78bfa;">Qwen 2 GGUF</a></li>
+                        </ul>
+                        <p style="font-size: 0.75rem; color: #f59e0b; margin-top: 0.75rem;">Download Q4_K_M or Q5_K_M versions for best balance of size and quality. Upload to Models tab for 100% offline use.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2>Your Providers</h2>
+                    <div class="model-list" id="providersList">
+                        <div class="empty-state">No providers configured</div>
+                    </div>
+                    
+                    <h2 style="margin-top: 1.5rem;">Test Provider</h2>
+                    <textarea id="providerTestInput" class="code-textarea" style="min-height: 80px;" placeholder="Type a message to test your provider..."></textarea>
+                    <button class="btn btn-primary" onclick="testProvider()" style="margin-top: 0.5rem;">Send Test Message</button>
+                    <div class="code-output" id="providerTestOutput" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Tab -->
+        <div class="tab-content" id="tab-network">
+            <div class="grid">
+                <div class="panel">
+                    <h2>Server Settings</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Configure how Runnerbot listens for connections.</p>
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Host/IP Address</label>
+                        <input type="text" id="networkHost" value="0.0.0.0" placeholder="0.0.0.0 or 127.0.0.1 or custom IP" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                        <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">Use 0.0.0.0 for all interfaces, 127.0.0.1 for localhost only, or enter a custom IP</p>
+                    </div>
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Port</label>
+                        <input type="number" id="networkPort" value="5000" min="1024" max="65535" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveNetworkSettings()">Save Settings</button>
+                    <p style="color: #f59e0b; font-size: 0.85rem; margin-top: 0.5rem;">Restart server to apply host/port changes.</p>
+                    
+                    <h3 style="color: #a78bfa; margin-top: 1.5rem; margin-bottom: 0.5rem;">Current URLs</h3>
+                    <div id="networkUrls" style="background: #1e293b; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem;">
+                        <div style="margin-bottom: 0.5rem;">Local: <span id="localUrl" style="color: #10b981;">Loading...</span></div>
+                        <div style="margin-bottom: 0.5rem;">LAN: <span id="lanUrl" style="color: #06b6d4;">Loading...</span></div>
+                        <div id="meshUrlDisplay" style="display: none;">Mesh: <span id="meshUrl" style="color: #f59e0b;">-</span></div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2>Mesh Network</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Connect via mesh networks like ZeroTier, Tailscale, or custom VPN.</p>
+                    
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Mesh Type</label>
+                        <select id="meshType" style="width: 100%;" onchange="toggleMeshFields()">
+                            <option value="none">None</option>
+                            <option value="zerotier">ZeroTier</option>
+                            <option value="tailscale">Tailscale</option>
+                            <option value="nebula">Nebula</option>
+                            <option value="wireguard">WireGuard</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    
+                    <div id="meshFields" style="display: none;">
+                        <div class="setting-item" style="margin-bottom: 1rem;">
+                            <label>Mesh IP/Hostname</label>
+                            <input type="text" id="meshHost" placeholder="e.g., 10.147.20.5 or mydevice.tailnet.ts.net" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                            <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">Your device's mesh network IP or hostname</p>
+                        </div>
+                        
+                        <div class="setting-item" style="margin-bottom: 1rem;">
+                            <label>Mesh Port</label>
+                            <input type="number" id="meshPort" value="5000" min="1024" max="65535" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                            <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">Port to use on mesh network (usually same as server port)</p>
+                        </div>
+                        
+                        <div class="setting-item" style="margin-bottom: 1rem;">
+                            <label>Custom URL (Optional)</label>
+                            <input type="text" id="meshCustomUrl" placeholder="https://my-custom-domain.com:5000" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                            <p style="color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">Override with a custom URL for accessing Runnerbot</p>
+                        </div>
+                        
+                        <div id="meshNetworkId" class="setting-item" style="margin-bottom: 1rem; display: none;">
+                            <label>Network ID</label>
+                            <input type="text" id="meshNetId" placeholder="ZeroTier/Nebula Network ID" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveMeshSettings()">Save Mesh Settings</button>
+                    
+                    <div id="meshStatus" style="margin-top: 1rem; padding: 1rem; border-radius: 8px; background: #1e293b;">
+                        <div style="margin-bottom: 0.5rem;">Mesh Status: <span id="meshActive" style="color: #94a3b8;">Not Configured</span></div>
+                        <div>Access URL: <span id="meshAccessUrl" style="color: #f59e0b; word-break: break-all;">-</span></div>
+                    </div>
+                    
+                    <h3 style="color: #a78bfa; margin-top: 1.5rem; margin-bottom: 0.5rem;">Setup Guides</h3>
+                    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; font-size: 0.85rem; color: #94a3b8;">
+                        <p><strong style="color: #e2e8f0;">ZeroTier:</strong> Install from zerotier.com, join network, use assigned IP</p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">Tailscale:</strong> Install from tailscale.com, login, use MagicDNS hostname</p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">Nebula:</strong> Self-hosted mesh VPN, configure lighthouse and nodes</p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">WireGuard:</strong> Configure peer connections with allowed IPs</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2>Internet Tunnel</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Expose your local server to the internet using tunneling services like ngrok or Pinggy.</p>
+                    
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Tunnel Service</label>
+                        <select id="tunnelService" style="width: 100%;">
+                            <option value="none">None (Local only)</option>
+                            <option value="ngrok">ngrok</option>
+                            <option value="pinggy">Pinggy (Free, no signup)</option>
+                            <option value="localtunnel">LocalTunnel</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>Auth Token (ngrok only)</label>
+                        <input type="password" id="tunnelAuthtoken" placeholder="Optional ngrok authtoken" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-success" onclick="startTunnel()">Start Tunnel</button>
+                        <button class="btn btn-danger" onclick="stopTunnel()">Stop Tunnel</button>
+                    </div>
+                    
+                    <div id="tunnelStatus" style="margin-top: 1rem; padding: 1rem; border-radius: 8px; background: #1e293b;">
+                        <div style="margin-bottom: 0.5rem;">Status: <span id="tunnelActive" style="color: #94a3b8;">Inactive</span></div>
+                        <div>Public URL: <span id="tunnelUrl" style="color: #a78bfa; word-break: break-all;">-</span></div>
+                    </div>
+                    
+                    <h3 style="color: #a78bfa; margin-top: 1.5rem; margin-bottom: 0.5rem;">Installation</h3>
+                    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; font-size: 0.85rem; color: #94a3b8;">
+                        <p><strong style="color: #e2e8f0;">ngrok:</strong> Download from ngrok.com or <code>pip install pyngrok</code></p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">Pinggy:</strong> No installation needed (uses SSH)</p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">LocalTunnel:</strong> <code>npm install -g localtunnel</code></p>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2>VPN Configuration</h2>
+                    <p style="color: #94a3b8; margin-bottom: 1rem;">Configure VPN settings for secure browsing.</p>
+                    
+                    <div class="setting-item" style="margin-bottom: 1rem;">
+                        <label>VPN Provider</label>
+                        <select id="vpnProvider" style="width: 100%;" onchange="toggleVpnFields()">
+                            <option value="none">None (Direct Connection)</option>
+                            <option value="nordvpn">NordVPN</option>
+                            <option value="expressvpn">ExpressVPN</option>
+                            <option value="protonvpn">ProtonVPN</option>
+                            <option value="mullvad">Mullvad</option>
+                            <option value="windscribe">Windscribe</option>
+                            <option value="openvpn">OpenVPN (Custom)</option>
+                            <option value="wireguard">WireGuard (Custom)</option>
+                        </select>
+                    </div>
+                    
+                    <div id="vpnFields" style="display: none;">
+                        <div class="setting-item" style="margin-bottom: 1rem;">
+                            <label>Server/Region</label>
+                            <input type="text" id="vpnServer" placeholder="e.g., us-east, uk-london, auto" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                        </div>
+                        
+                        <div class="setting-item" style="margin-bottom: 1rem;">
+                            <label>Username (if required)</label>
+                            <input type="text" id="vpnUsername" placeholder="VPN username" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                        </div>
+                        
+                        <div class="setting-item" style="margin-bottom: 1rem;">
+                            <label>Password/Token</label>
+                            <input type="password" id="vpnPassword" placeholder="VPN password or token" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                        </div>
+                        
+                        <div id="customVpnConfig" class="setting-item" style="margin-bottom: 1rem; display: none;">
+                            <label>Config File Path</label>
+                            <input type="text" id="vpnConfigPath" placeholder="/path/to/config.ovpn or /path/to/wg0.conf" style="width: 100%; padding: 0.5rem; border-radius: 6px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveVpnSettings()">Save VPN Settings</button>
+                    
+                    <div id="vpnStatus" style="margin-top: 1rem; padding: 1rem; border-radius: 8px; background: #1e293b;">
+                        <div style="margin-bottom: 0.5rem;">VPN Status: <span id="vpnActive" style="color: #94a3b8;">Not Configured</span></div>
+                        <div>Provider: <span id="vpnProviderName" style="color: #a78bfa;">-</span></div>
+                    </div>
+                    
+                    <h3 style="color: #a78bfa; margin-top: 1.5rem; margin-bottom: 0.5rem;">VPN Setup Guide</h3>
+                    <div style="background: #1e293b; padding: 1rem; border-radius: 8px; font-size: 0.85rem; color: #94a3b8;">
+                        <p><strong style="color: #e2e8f0;">Commercial VPNs:</strong> Install provider's CLI tool, then configure here</p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">OpenVPN:</strong> <code>sudo apt install openvpn</code> + config file</p>
+                        <p style="margin-top: 0.5rem;"><strong style="color: #e2e8f0;">WireGuard:</strong> <code>sudo apt install wireguard</code> + config file</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chatMessages = [];
+        let isGenerating = false;
+
+        const tabOrder = ['chat', 'code', 'library', 'memory', 'skills', 'agents', 'providers', 'files', 'network'];
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            const tabIndex = tabOrder.indexOf(tabName) + 1;
+            document.querySelector(`.tab:nth-child(${tabIndex})`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            if (tabName === 'memory') refreshMemory();
+            if (tabName === 'skills') refreshSkills();
+            if (tabName === 'agents') refreshAgents();
+            if (tabName === 'providers') refreshProviders();
+            if (tabName === 'files') browseFiles();
+            if (tabName === 'network') refreshNetworkStatus();
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                document.getElementById('statusIndicator').classList.add('connected');
+                document.getElementById('statusText').textContent = 'Server connected';
+                if (data.model_loaded) {
+                    document.getElementById('modelStatus').textContent = `Model: ${data.current_model}`;
+                    enableChat();
+                } else if (data.active_provider) {
+                    document.getElementById('modelStatus').textContent = `Provider: ${data.active_provider}`;
+                    enableChat();
+                } else {
+                    document.getElementById('modelStatus').textContent = 'No model loaded';
+                    disableChat();
+                }
+                refreshModels();
+                refreshLibrary();
+            } catch (e) {
+                document.getElementById('statusIndicator').classList.remove('connected');
+                document.getElementById('statusText').textContent = 'Server disconnected';
+            }
+        }
+
+        async function refreshModels() {
+            try {
+                const response = await fetch('/api/models');
+                const data = await response.json();
+                const modelList = document.getElementById('modelList');
+                if (data.models.length === 0) {
+                    modelList.innerHTML = '<div class="empty-state">No models found. Upload a GGUF file.</div>';
+                    return;
+                }
+                modelList.innerHTML = data.models.map(model => `
+                    <div class="model-card ${model.loaded ? 'loaded' : ''}">
+                        <h3>${model.name}</h3>
+                        <p>${model.size_formatted}</p>
+                        <div class="model-actions">
+                            ${model.loaded 
+                                ? `<button class="btn-danger" onclick="unloadModel()">Unload</button>`
+                                : `<button class="btn-success" onclick="loadModel('${model.name}')">Load</button>`}
+                            <button class="btn-danger" onclick="deleteModel('${model.name}')">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error('Failed to refresh models:', e); }
+        }
+
+        async function loadModel(name) {
+            addSystemMessage(`Loading model: ${name}... This may take a moment.`);
+            try {
+                const response = await fetch('/api/models/load', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_name: name })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addSystemMessage(`Model ${name} loaded successfully!`);
+                    document.getElementById('modelStatus').textContent = `Model: ${name}`;
+                    enableChat();
+                    refreshModels();
+                } else { addSystemMessage(`Error: ${data.error}`); }
+            } catch (e) { addSystemMessage(`Error: ${e.message}`); }
+        }
+
+        async function unloadModel() {
+            try {
+                const response = await fetch('/api/models/unload', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                const data = await response.json();
+                if (data.success) {
+                    addSystemMessage('Model unloaded.');
+                    document.getElementById('modelStatus').textContent = 'No model loaded';
+                    disableChat();
+                    refreshModels();
+                }
+            } catch (e) { addSystemMessage(`Error: ${e.message}`); }
+        }
+
+        async function deleteModel(name) {
+            if (!confirm(`Delete model "${name}"?`)) return;
+            try {
+                const response = await fetch('/api/models/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_name: name })
+                });
+                const data = await response.json();
+                if (data.success) { addSystemMessage(`Model ${name} deleted.`); refreshModels(); checkStatus(); }
+                else { addSystemMessage(`Error: ${data.error}`); }
+            } catch (e) { addSystemMessage(`Error: ${e.message}`); }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message || isGenerating) return;
+            isGenerating = true;
+            document.getElementById('sendBtn').disabled = true;
+            addMessage('user', message);
+            chatMessages.push({ role: 'user', content: message });
+            input.value = '';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant';
+            loadingDiv.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+            document.getElementById('chatMessages').appendChild(loadingDiv);
+            scrollToBottom();
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: chatMessages,
+                        temperature: parseFloat(document.getElementById('temperature').value),
+                        max_tokens: parseInt(document.getElementById('maxTokens').value),
+                        top_p: 0.9
+                    })
+                });
+                loadingDiv.remove();
+                const data = await response.json();
+                if (data.success) {
+                    addMessage('assistant', data.response);
+                    chatMessages.push({ role: 'assistant', content: data.response });
+                } else { addSystemMessage(`Error: ${data.error}`); }
+            } catch (e) { loadingDiv.remove(); addSystemMessage(`Error: ${e.message}`); }
+            isGenerating = false;
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        function addMessage(role, content) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function addSystemMessage(content) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+            messageDiv.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function scrollToBottom() {
+            const messagesDiv = document.getElementById('chatMessages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function enableChat() {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('messageInput').placeholder = 'Type your message...';
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        function disableChat() {
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('messageInput').placeholder = 'Type your message (load a model or add a provider to chat)...';
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        let recognition = null;
+        let isListening = false;
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.log('Speech recognition not supported');
+                document.getElementById('micBtn').style.display = 'none';
+                return false;
+            }
+            
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = function() {
+                isListening = true;
+                document.getElementById('micBtn').style.background = '#dc2626';
+                document.getElementById('micBtn').textContent = '🔴';
+                document.getElementById('voiceStatus').style.display = 'block';
+            };
+            
+            recognition.onend = function() {
+                isListening = false;
+                document.getElementById('micBtn').style.background = '#374151';
+                document.getElementById('micBtn').textContent = '🎤';
+                document.getElementById('voiceStatus').style.display = 'none';
+            };
+            
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                isListening = false;
+                document.getElementById('micBtn').style.background = '#374151';
+                document.getElementById('micBtn').textContent = '🎤';
+                document.getElementById('voiceStatus').style.display = 'none';
+                if (event.error === 'not-allowed') {
+                    alert('Microphone access denied. Please allow microphone access in your browser settings.');
+                }
+            };
+            
+            recognition.onresult = function(event) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                const input = document.getElementById('messageInput');
+                if (finalTranscript) {
+                    input.value += finalTranscript;
+                }
+            };
+            
+            return true;
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                if (!initSpeechRecognition()) {
+                    alert('Speech recognition is not supported in your browser. Try Chrome or Edge.');
+                    return;
+                }
+            }
+            
+            if (isListening) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error('Error starting recognition:', e);
+                }
+            }
+        }
+
+        initSpeechRecognition();
+
+        function toggleChatSearch() {
+            const searchBox = document.getElementById('chatSearchBox');
+            const searchBtn = document.getElementById('searchBtn');
+            if (searchBox.style.display === 'none') {
+                searchBox.style.display = 'block';
+                searchBtn.style.background = '#7c3aed';
+                document.getElementById('chatSearchQuery').focus();
+            } else {
+                searchBox.style.display = 'none';
+                searchBtn.style.background = '#374151';
+                document.getElementById('chatSearchResults').innerHTML = '';
+            }
+        }
+
+        async function chatWebSearch() {
+            const query = document.getElementById('chatSearchQuery').value.trim();
+            const engine = document.getElementById('chatSearchEngine').value;
+            const resultsDiv = document.getElementById('chatSearchResults');
+            
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div style="color: #94a3b8; padding: 0.5rem; font-size: 0.85rem;">Searching...</div>';
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, engine })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div style="color: #f87171; padding: 0.5rem; font-size: 0.85rem;">${escapeHtml(data.error)}</div>`;
+                    return;
+                }
+                
+                if (data.redirect_url) {
+                    resultsDiv.innerHTML = `<a href="${escapeHtml(data.redirect_url)}" target="_blank" style="color: #a78bfa; font-size: 0.85rem;">Open ${engine} search in browser</a>`;
+                    return;
+                }
+                
+                if (data.results && data.results.length > 0) {
+                    resultsDiv.innerHTML = data.results.slice(0, 5).map(r => `
+                        <div style="padding: 0.5rem; border-bottom: 1px solid #334155;">
+                            <a href="${escapeHtml(r.url)}" target="_blank" style="color: #a78bfa; font-size: 0.85rem; text-decoration: none;">${escapeHtml(r.title)}</a>
+                            <p style="color: #64748b; font-size: 0.75rem; margin-top: 0.25rem;">${escapeHtml((r.snippet || '').substring(0, 100))}...</p>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsDiv.innerHTML = '<div style="color: #94a3b8; padding: 0.5rem; font-size: 0.85rem;">No results found.</div>';
+                }
+            } catch (e) { 
+                resultsDiv.innerHTML = `<div style="color: #f87171; padding: 0.5rem; font-size: 0.85rem;">Error: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        document.getElementById('chatSearchQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); chatWebSearch(); } });
+
+        // Model upload
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) uploadModelFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) uploadModelFile(e.target.files[0]); });
+
+        async function uploadModelFile(file) {
+            if (!file.name.endsWith('.gguf') && !file.name.endsWith('.bin')) {
+                addSystemMessage('Only GGUF and BIN files are supported.');
+                return;
+            }
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            progressDiv.style.display = 'block';
+            const formData = new FormData();
+            formData.append('file', file);
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', (e) => { if (e.lengthComputable) progressFill.style.width = (e.loaded / e.total) * 100 + '%'; });
+            xhr.addEventListener('load', () => {
+                progressDiv.style.display = 'none';
+                progressFill.style.width = '0%';
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) { addSystemMessage(`Model "${data.model.name}" uploaded (${data.model.size_formatted})`); refreshModels(); }
+                    else { addSystemMessage(`Error: ${data.error}`); }
+                } else { addSystemMessage('Upload failed.'); }
+            });
+            xhr.addEventListener('error', () => { progressDiv.style.display = 'none'; addSystemMessage('Upload failed.'); });
+            xhr.open('POST', '/api/models/upload');
+            xhr.send(formData);
+        }
+
+        document.getElementById('messageInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+        // Vibe Coding
+        async function generateCode() {
+            const desc = document.getElementById('codeInput').value.trim();
+            if (!desc) { alert('Please describe what you want to build.'); return; }
+            const lang = document.getElementById('codeLanguage').value;
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Generating code...';
+            try {
+                const response = await fetch('/api/code/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: desc, language: lang })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.code; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function explainCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to explain.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Analyzing code...';
+            try {
+                const response = await fetch('/api/code/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.explanation; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function debugCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to debug.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Debugging code...';
+            try {
+                const response = await fetch('/api/code/debug', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.fix; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function refactorCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to refactor.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Refactoring code...';
+            try {
+                const response = await fetch('/api/code/refactor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function optimizeCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to optimize.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Optimizing code...';
+            try {
+                const response = await fetch('/api/code/optimize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function documentCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to document.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Adding documentation...';
+            try {
+                const response = await fetch('/api/code/document', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function convertCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to convert.'); return; }
+            const targetLang = document.getElementById('targetLanguage').value;
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = `Converting to ${targetLang}...`;
+            try {
+                const response = await fetch('/api/code/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, target_language: targetLang })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function completeCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to complete.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Completing code...';
+            try {
+                const response = await fetch('/api/code/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function reviewCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to review.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Reviewing code...';
+            try {
+                const response = await fetch('/api/code/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function generateTests() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) { alert('Please paste code to generate tests for.'); return; }
+            const lang = document.getElementById('codeLanguage').value;
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Generating tests...';
+            try {
+                const response = await fetch('/api/code/tests', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, language: lang })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function editCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            const instruction = document.getElementById('editInstruction').value.trim();
+            if (!code) { alert('Please paste code to edit.'); return; }
+            if (!instruction) { alert('Please enter an edit instruction.'); return; }
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'block';
+            output.textContent = 'Editing code...';
+            try {
+                const response = await fetch('/api/code/edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, instruction })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        function clearCodeOutput() {
+            const output = document.getElementById('codeOutput');
+            output.style.display = 'none';
+            output.textContent = '';
+        }
+
+        // Library
+        const libraryUploadZone = document.getElementById('libraryUploadZone');
+        const libraryFileInput = document.getElementById('libraryFileInput');
+        libraryUploadZone.addEventListener('click', () => libraryFileInput.click());
+        libraryUploadZone.addEventListener('dragover', (e) => { e.preventDefault(); libraryUploadZone.classList.add('dragover'); });
+        libraryUploadZone.addEventListener('dragleave', () => libraryUploadZone.classList.remove('dragover'));
+        libraryUploadZone.addEventListener('drop', (e) => { e.preventDefault(); libraryUploadZone.classList.remove('dragover'); uploadLibraryFiles(e.dataTransfer.files); });
+        libraryFileInput.addEventListener('change', (e) => { uploadLibraryFiles(e.target.files); });
+
+        async function uploadLibraryFiles(files) {
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const response = await fetch('/api/library/upload', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (!data.success) console.error(`Failed to upload ${file.name}`);
+                } catch (e) { console.error(`Error uploading ${file.name}:`, e); }
+            }
+            refreshLibrary();
+        }
+
+        async function refreshLibrary() {
+            try {
+                const response = await fetch('/api/library');
+                const data = await response.json();
+                const list = document.getElementById('libraryList');
+                if (data.files.length === 0) {
+                    list.innerHTML = '<div class="empty-state">No files in library. Upload some files to search and learn.</div>';
+                    return;
+                }
+                list.innerHTML = data.files.map(file => `
+                    <div class="file-card">
+                        <div>
+                            <strong>${file.name}</strong>
+                            <br><small style="color: #94a3b8;">${file.size_formatted}</small>
+                        </div>
+                        <button class="btn btn-danger btn-small" onclick="deleteLibraryFile('${file.name}')">Delete</button>
+                    </div>
+                `).join('');
+            } catch (e) { console.error('Failed to refresh library:', e); }
+        }
+
+        async function deleteLibraryFile(name) {
+            if (!confirm(`Delete "${name}"?`)) return;
+            try {
+                await fetch('/api/library/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: name })
+                });
+                refreshLibrary();
+            } catch (e) { console.error('Delete failed:', e); }
+        }
+
+        async function searchLibrary() {
+            const query = document.getElementById('searchQuery').value.trim();
+            if (!query) { alert('Enter a search query.'); return; }
+            const results = document.getElementById('searchResults');
+            results.innerHTML = '<p style="color: #94a3b8;">Searching...</p>';
+            try {
+                const response = await fetch('/api/library/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const data = await response.json();
+                if (data.success && data.results.length > 0) {
+                    results.innerHTML = data.results.map(r => `
+                        <div class="search-result">
+                            <h4>${r.filename} (${r.total_matches} matches)</h4>
+                            ${r.matches.map(m => `<pre>Line ${m.line}: ${escapeHtml(m.context)}</pre>`).join('')}
+                        </div>
+                    `).join('');
+                } else { results.innerHTML = '<p style="color: #94a3b8;">No results found.</p>'; }
+            } catch (e) { results.innerHTML = `<p style="color: #ef4444;">Error: ${e.message}</p>`; }
+        }
+
+        document.getElementById('searchQuery').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchLibrary(); });
+
+        async function learnFromLibrary() {
+            const question = document.getElementById('learnQuestion').value.trim();
+            if (!question) { alert('Enter a question.'); return; }
+            const output = document.getElementById('learnOutput');
+            output.style.display = 'block';
+            output.textContent = 'Thinking...';
+            try {
+                const response = await fetch('/api/library/learn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.answer; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        // ============ AI TEACHER & VOICE FUNCTIONS ============
+        let speechSynth = window.speechSynthesis;
+        let currentUtterance = null;
+        let currentLessonText = '';
+
+        function loadVoices() {
+            const voiceSelect = document.getElementById('voiceSelect');
+            const voices = speechSynth.getVoices();
+            voiceSelect.innerHTML = '<option value="">Default Voice</option>';
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+        }
+        
+        if (speechSynth) {
+            loadVoices();
+            speechSynth.onvoiceschanged = loadVoices;
+        }
+
+        async function teachMe() {
+            const topic = document.getElementById('teachTopic').value.trim();
+            if (!topic) { alert('Enter a topic to learn about.'); return; }
+            
+            const level = document.getElementById('teachLevel').value;
+            const style = document.getElementById('teachStyle').value;
+            const output = document.getElementById('teachOutput');
+            
+            output.style.display = 'block';
+            output.textContent = 'Teacher is preparing your lesson...';
+            
+            try {
+                const response = await fetch('/api/library/teach', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic, level, style })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    output.textContent = data.lesson;
+                    currentLessonText = data.lesson;
+                } else {
+                    output.textContent = `Error: ${data.error}`;
+                }
+            } catch (e) {
+                output.textContent = `Error: ${e.message}`;
+            }
+        }
+
+        function speakLesson() {
+            if (!speechSynth) {
+                alert('Text-to-speech not supported in this browser.');
+                return;
+            }
+            
+            let textToSpeak = currentLessonText;
+            if (!textToSpeak) {
+                const teachOutput = document.getElementById('teachOutput');
+                const learnOutput = document.getElementById('learnOutput');
+                textToSpeak = teachOutput.textContent || learnOutput.textContent;
+            }
+            
+            if (!textToSpeak || textToSpeak.includes('Error:') || textToSpeak.includes('...')) {
+                alert('No lesson to read. Generate a lesson first.');
+                return;
+            }
+            
+            stopSpeech();
+            
+            currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
+            currentUtterance.rate = parseFloat(document.getElementById('speechRate').value);
+            
+            const voiceIndex = document.getElementById('voiceSelect').value;
+            if (voiceIndex !== '') {
+                const voices = speechSynth.getVoices();
+                currentUtterance.voice = voices[parseInt(voiceIndex)];
+            }
+            
+            currentUtterance.onend = () => {
+                document.getElementById('speakBtn').textContent = 'Read Aloud';
+            };
+            
+            document.getElementById('speakBtn').textContent = 'Reading...';
+            speechSynth.speak(currentUtterance);
+        }
+
+        function pauseSpeech() {
+            if (speechSynth) {
+                if (speechSynth.paused) {
+                    speechSynth.resume();
+                    document.getElementById('pauseBtn').textContent = 'Pause';
+                } else {
+                    speechSynth.pause();
+                    document.getElementById('pauseBtn').textContent = 'Resume';
+                }
+            }
+        }
+
+        function stopSpeech() {
+            if (speechSynth) {
+                speechSynth.cancel();
+                document.getElementById('speakBtn').textContent = 'Read Aloud';
+                document.getElementById('pauseBtn').textContent = 'Pause';
+            }
+        }
+
+        // ============ MEMORY FUNCTIONS ============
+        async function refreshMemory() {
+            try {
+                const response = await fetch('/api/memory');
+                const data = await response.json();
+                const list = document.getElementById('memoryList');
+                if (data.facts && data.facts.length > 0) {
+                    list.innerHTML = data.facts.map(f => `
+                        <div class="file-card">
+                            <span style="flex: 1;">${escapeHtml(f.fact)}</span>
+                            <button class="btn btn-danger btn-small" onclick="deleteMemory('${f.id}')">Delete</button>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div class="empty-state">No memories stored yet</div>';
+                }
+                if (data.context) {
+                    document.getElementById('contextInput').value = data.context;
+                }
+            } catch (e) { console.error('Error refreshing memory:', e); }
+        }
+
+        async function addMemory() {
+            const fact = document.getElementById('memoryInput').value.trim();
+            if (!fact) { alert('Enter a fact to remember.'); return; }
+            try {
+                await fetch('/api/memory/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fact })
+                });
+                document.getElementById('memoryInput').value = '';
+                refreshMemory();
+            } catch (e) { alert('Error adding memory: ' + e.message); }
+        }
+
+        async function setContext() {
+            const context = document.getElementById('contextInput').value.trim();
+            try {
+                await fetch('/api/memory/context', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ context })
+                });
+                alert('Context saved!');
+            } catch (e) { alert('Error saving context: ' + e.message); }
+        }
+
+        async function deleteMemory(id) {
+            try {
+                await fetch('/api/memory/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                refreshMemory();
+            } catch (e) { alert('Error deleting memory: ' + e.message); }
+        }
+
+        async function clearMemory() {
+            if (!confirm('Clear all memories?')) return;
+            try {
+                await fetch('/api/memory/clear', { method: 'POST' });
+                refreshMemory();
+            } catch (e) { alert('Error clearing memory: ' + e.message); }
+        }
+
+        // ============ SKILLS FUNCTIONS ============
+        async function refreshSkills() {
+            try {
+                const response = await fetch('/api/skills');
+                const data = await response.json();
+                const list = document.getElementById('skillsList');
+                const select = document.getElementById('skillSelect');
+                const panel = document.getElementById('skillExecutePanel');
+                
+                if (data.skills && data.skills.length > 0) {
+                    list.innerHTML = data.skills.map(s => `
+                        <div class="model-card">
+                            <h3>${escapeHtml(s.name)}</h3>
+                            <p>${escapeHtml(s.description || 'No description')}</p>
+                            <button class="btn btn-danger btn-small" onclick="deleteSkill('${s.id}')">Delete</button>
+                        </div>
+                    `).join('');
+                    select.innerHTML = data.skills.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+                    panel.style.display = 'block';
+                } else {
+                    list.innerHTML = '<div class="empty-state">No skills created yet</div>';
+                    panel.style.display = 'none';
+                }
+            } catch (e) { console.error('Error refreshing skills:', e); }
+        }
+
+        async function createSkill() {
+            const name = document.getElementById('skillName').value.trim();
+            const description = document.getElementById('skillDescription').value.trim();
+            const prompt = document.getElementById('skillPrompt').value.trim();
+            if (!name || !prompt) { alert('Name and prompt are required.'); return; }
+            try {
+                await fetch('/api/skills/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description, prompt })
+                });
+                document.getElementById('skillName').value = '';
+                document.getElementById('skillDescription').value = '';
+                document.getElementById('skillPrompt').value = '';
+                refreshSkills();
+            } catch (e) { alert('Error creating skill: ' + e.message); }
+        }
+
+        async function executeSkill() {
+            const skill_id = document.getElementById('skillSelect').value;
+            const input = document.getElementById('skillInput').value.trim();
+            const output = document.getElementById('skillOutput');
+            output.style.display = 'block';
+            output.textContent = 'Executing skill...';
+            try {
+                const response = await fetch('/api/skills/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skill_id, input })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.result; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function deleteSkill(id) {
+            if (!confirm('Delete this skill?')) return;
+            try {
+                await fetch('/api/skills/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                refreshSkills();
+            } catch (e) { alert('Error deleting skill: ' + e.message); }
+        }
+
+        // ============ AGENTS FUNCTIONS ============
+        async function refreshAgents() {
+            try {
+                const response = await fetch('/api/agents');
+                const data = await response.json();
+                const list = document.getElementById('agentsList');
+                const select = document.getElementById('agentSelect');
+                const panel = document.getElementById('agentChatPanel');
+                
+                if (data.agents && data.agents.length > 0) {
+                    list.innerHTML = data.agents.map(a => `
+                        <div class="model-card">
+                            <h3>${escapeHtml(a.name)}</h3>
+                            <p style="font-size: 0.85rem;">${escapeHtml(a.persona.substring(0, 100))}...</p>
+                            <button class="btn btn-danger btn-small" onclick="deleteAgent('${a.id}')">Delete</button>
+                        </div>
+                    `).join('');
+                    select.innerHTML = data.agents.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('');
+                    panel.style.display = 'block';
+                } else {
+                    list.innerHTML = '<div class="empty-state">No agents created yet</div>';
+                    panel.style.display = 'none';
+                }
+            } catch (e) { console.error('Error refreshing agents:', e); }
+        }
+
+        async function createAgent() {
+            const name = document.getElementById('agentName').value.trim();
+            const persona = document.getElementById('agentPersona').value.trim();
+            if (!name || !persona) { alert('Name and persona are required.'); return; }
+            try {
+                await fetch('/api/agents/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, persona })
+                });
+                document.getElementById('agentName').value = '';
+                document.getElementById('agentPersona').value = '';
+                refreshAgents();
+            } catch (e) { alert('Error creating agent: ' + e.message); }
+        }
+
+        async function chatWithAgent() {
+            const agent_id = document.getElementById('agentSelect').value;
+            const message = document.getElementById('agentMessage').value.trim();
+            if (!message) { alert('Enter a message.'); return; }
+            const output = document.getElementById('agentResponse');
+            output.style.display = 'block';
+            output.textContent = 'Agent is thinking...';
+            try {
+                const response = await fetch('/api/agents/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ agent_id, message })
+                });
+                const data = await response.json();
+                if (data.success) { output.textContent = data.response; }
+                else { output.textContent = `Error: ${data.error}`; }
+            } catch (e) { output.textContent = `Error: ${e.message}`; }
+        }
+
+        async function deleteAgent(id) {
+            if (!confirm('Delete this agent?')) return;
+            try {
+                await fetch('/api/agents/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                refreshAgents();
+            } catch (e) { alert('Error deleting agent: ' + e.message); }
+        }
+
+        // ============ FILE BROWSER FUNCTIONS ============
+        let currentBrowsePath = '.';
+
+        async function browseFiles() {
+            const path = document.getElementById('filePath').value || '.';
+            try {
+                const response = await fetch(`/api/files?path=${encodeURIComponent(path)}`);
+                const data = await response.json();
+                if (data.error) { alert(data.error); return; }
+                
+                currentBrowsePath = data.path;
+                document.getElementById('currentPath').textContent = data.path;
+                document.getElementById('filePath').value = data.path;
+                
+                const list = document.getElementById('fileList');
+                if (data.items.length > 0) {
+                    list.innerHTML = data.items.map(item => `
+                        <div class="file-card" style="cursor: pointer;" onclick="${item.is_directory ? `navigateTo('${item.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')` : `previewFile('${item.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')`}">
+                            <span>${item.is_directory ? '📁' : '📄'} ${escapeHtml(item.name)}</span>
+                            <span style="color: #64748b;">${item.size_formatted}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div class="empty-state">Empty directory</div>';
+                }
+            } catch (e) { alert('Error browsing: ' + e.message); }
+        }
+
+        function navigateTo(path) {
+            document.getElementById('filePath').value = path;
+            browseFiles();
+        }
+
+        function goUp() {
+            const current = document.getElementById('filePath').value;
+            const parent = current.split(/[/\\]/).slice(0, -1).join('/') || '.';
+            document.getElementById('filePath').value = parent;
+            browseFiles();
+        }
+
+        async function previewFile(path) {
+            try {
+                const response = await fetch('/api/files/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('filePreviewName').textContent = path;
+                    document.getElementById('filePreview').textContent = data.content;
+                    document.getElementById('filePreview').style.display = 'block';
+                    document.getElementById('filePreviewEmpty').style.display = 'none';
+                } else {
+                    alert(data.error);
+                }
+            } catch (e) { alert('Error reading file: ' + e.message); }
+        }
+
+        async function aiSearchFiles() {
+            const query = document.getElementById('aiFileSearch').value.trim();
+            const searchPath = document.getElementById('filePath').value || '.';
+            const resultsDiv = document.getElementById('aiSearchResults');
+            
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div style="color: #94a3b8; padding: 0.5rem;">Searching with AI...</div>';
+            
+            try {
+                const response = await fetch('/api/files/ai-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, path: searchPath })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div style="color: #f87171; padding: 0.5rem;">${escapeHtml(data.error)}</div>`;
+                    return;
+                }
+                
+                if (data.results && data.results.length > 0) {
+                    resultsDiv.innerHTML = `
+                        <div style="background: #1e293b; border-radius: 8px; padding: 0.75rem; margin-top: 0.5rem;">
+                            <div style="color: #a78bfa; font-weight: 500; margin-bottom: 0.5rem;">Found ${data.results.length} relevant files:</div>
+                            ${data.results.map(r => `
+                                <div class="file-card" style="cursor: pointer; margin-bottom: 0.25rem;" onclick="previewFile('${escapeHtml(searchPath + '/' + r.path).replace(/'/g, "\\'")}')">
+                                    <div>
+                                        <span style="color: #10b981;">📄 ${escapeHtml(r.path)}</span>
+                                        <div style="color: #64748b; font-size: 0.8rem; margin-top: 0.25rem;">${escapeHtml(r.reason || '')}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `<div style="color: #94a3b8; padding: 0.5rem;">No matching files found. ${data.message || ''}</div>`;
+                }
+            } catch (e) { 
+                resultsDiv.innerHTML = `<div style="color: #f87171; padding: 0.5rem;">Error: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============ PROVIDERS FUNCTIONS ============
+        let activeProviderId = null;
+
+        async function refreshProviders() {
+            try {
+                const response = await fetch('/api/providers');
+                const data = await response.json();
+                const list = document.getElementById('providersList');
+                activeProviderId = data.active_provider;
+                
+                if (data.providers && data.providers.length > 0) {
+                    list.innerHTML = data.providers.map(p => `
+                        <div class="model-card ${p.id === activeProviderId ? 'loaded' : ''}">
+                            <div class="model-info">
+                                <div class="model-name">${escapeHtml(p.name)}</div>
+                                <div class="model-size">${p.type.toUpperCase()} ${p.model ? '| ' + p.model : ''}</div>
+                            </div>
+                            <div class="model-actions">
+                                <button class="btn ${p.id === activeProviderId ? 'btn-success' : 'btn-primary'} btn-small" onclick="activateProvider('${p.id}')">${p.id === activeProviderId ? 'Active' : 'Activate'}</button>
+                                <button class="btn btn-danger btn-small" onclick="deleteProvider('${p.id}')">Delete</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div class="empty-state">No providers configured</div>';
+                }
+            } catch (e) { console.error('Error refreshing providers:', e); }
+        }
+
+        async function addProvider() {
+            const name = document.getElementById('providerName').value.trim();
+            const type = document.getElementById('providerType').value;
+            const token = document.getElementById('providerToken').value.trim();
+            const model = document.getElementById('providerModel').value.trim();
+            const endpoint = document.getElementById('providerEndpoint').value.trim();
+            
+            if (!name || !token) {
+                alert('Name and API token are required.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/providers/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, type, token, model, endpoint })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('providerName').value = '';
+                    document.getElementById('providerToken').value = '';
+                    document.getElementById('providerModel').value = '';
+                    document.getElementById('providerEndpoint').value = '';
+                    refreshProviders();
+                    alert('Provider added successfully!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) { alert('Error adding provider: ' + e.message); }
+        }
+
+        async function deleteProvider(id) {
+            if (!confirm('Delete this provider?')) return;
+            try {
+                await fetch('/api/providers/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                refreshProviders();
+            } catch (e) { console.error('Error deleting provider:', e); }
+        }
+
+        async function activateProvider(id) {
+            try {
+                await fetch('/api/providers/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                refreshProviders();
+                updateStatus();
+            } catch (e) { console.error('Error activating provider:', e); }
+        }
+
+        async function testProvider() {
+            const message = document.getElementById('providerTestInput').value.trim();
+            if (!message) { alert('Enter a test message.'); return; }
+            
+            const output = document.getElementById('providerTestOutput');
+            output.style.display = 'block';
+            output.textContent = 'Sending request to provider...';
+            
+            try {
+                const response = await fetch('/api/providers/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    output.textContent = data.response;
+                } else {
+                    output.textContent = 'Error: ' + data.error;
+                }
+            } catch (e) {
+                output.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        // ============ NETWORK FUNCTIONS ============
+        async function refreshNetworkStatus() {
+            try {
+                const [configRes, statusRes] = await Promise.all([
+                    fetch('/api/network'),
+                    fetch('/api/network/status')
+                ]);
+                const config = await configRes.json();
+                const status = await statusRes.json();
+                
+                document.getElementById('networkHost').value = config.host || '0.0.0.0';
+                document.getElementById('networkPort').value = config.port || 5000;
+                document.getElementById('tunnelService').value = config.tunnel_service || 'none';
+                
+                document.getElementById('localUrl').textContent = status.localhost_url;
+                document.getElementById('lanUrl').textContent = status.local_url;
+                
+                if (status.tunnel_active) {
+                    document.getElementById('tunnelActive').textContent = 'Active';
+                    document.getElementById('tunnelActive').style.color = '#10b981';
+                    document.getElementById('tunnelUrl').textContent = status.tunnel_url || 'Check terminal for URL';
+                } else {
+                    document.getElementById('tunnelActive').textContent = 'Inactive';
+                    document.getElementById('tunnelActive').style.color = '#94a3b8';
+                    document.getElementById('tunnelUrl').textContent = '-';
+                }
+                
+                updateMeshUI(config);
+            } catch (e) { console.error('Error refreshing network status:', e); }
+        }
+
+        async function saveNetworkSettings() {
+            const host = document.getElementById('networkHost').value;
+            const port = document.getElementById('networkPort').value;
+            const tunnel_service = document.getElementById('tunnelService').value;
+            const tunnel_authtoken = document.getElementById('tunnelAuthtoken').value;
+            
+            try {
+                const response = await fetch('/api/network/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ host, port, tunnel_service, tunnel_authtoken })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) { alert('Error saving settings: ' + e.message); }
+        }
+
+        async function startTunnel() {
+            const service = document.getElementById('tunnelService').value;
+            const authtoken = document.getElementById('tunnelAuthtoken').value;
+            const port = document.getElementById('networkPort').value;
+            
+            if (service === 'none') {
+                alert('Please select a tunnel service first.');
+                return;
+            }
+            
+            document.getElementById('tunnelActive').textContent = 'Starting...';
+            document.getElementById('tunnelActive').style.color = '#f59e0b';
+            
+            try {
+                const response = await fetch('/api/network/tunnel/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service, authtoken, port })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    if (data.url) {
+                        document.getElementById('tunnelUrl').textContent = data.url;
+                    }
+                    alert(data.message || 'Tunnel started! URL: ' + (data.url || 'Check terminal'));
+                    refreshNetworkStatus();
+                } else {
+                    alert('Error: ' + data.error);
+                    refreshNetworkStatus();
+                }
+            } catch (e) { 
+                alert('Error starting tunnel: ' + e.message);
+                refreshNetworkStatus();
+            }
+        }
+
+        async function stopTunnel() {
+            try {
+                const response = await fetch('/api/network/tunnel/stop', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Tunnel stopped.');
+                    refreshNetworkStatus();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) { alert('Error stopping tunnel: ' + e.message); }
+        }
+
+        function toggleMeshFields() {
+            const meshType = document.getElementById('meshType').value;
+            const meshFields = document.getElementById('meshFields');
+            const meshNetworkId = document.getElementById('meshNetworkId');
+            
+            if (meshType === 'none') {
+                meshFields.style.display = 'none';
+            } else {
+                meshFields.style.display = 'block';
+                meshNetworkId.style.display = (meshType === 'zerotier' || meshType === 'nebula') ? 'block' : 'none';
+            }
+        }
+
+        async function saveMeshSettings() {
+            const meshType = document.getElementById('meshType').value;
+            const meshHost = document.getElementById('meshHost').value;
+            const meshPort = document.getElementById('meshPort').value;
+            const meshCustomUrl = document.getElementById('meshCustomUrl').value;
+            const meshNetId = document.getElementById('meshNetId').value;
+
+            try {
+                const response = await fetch('/api/network/mesh/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mesh_type: meshType,
+                        mesh_host: meshHost,
+                        mesh_port: parseInt(meshPort) || 5000,
+                        mesh_custom_url: meshCustomUrl,
+                        mesh_network_id: meshNetId
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Mesh settings saved!');
+                    refreshNetworkStatus();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) { alert('Error saving mesh settings: ' + e.message); }
+        }
+
+        function updateMeshUI(config) {
+            const meshType = config.mesh_type || 'none';
+            document.getElementById('meshType').value = meshType;
+            document.getElementById('meshHost').value = config.mesh_host || '';
+            document.getElementById('meshPort').value = config.mesh_port || 5000;
+            document.getElementById('meshCustomUrl').value = config.mesh_custom_url || '';
+            document.getElementById('meshNetId').value = config.mesh_network_id || '';
+            
+            toggleMeshFields();
+            
+            const meshUrlDisplay = document.getElementById('meshUrlDisplay');
+            const meshUrlSpan = document.getElementById('meshUrl');
+            const meshActiveSpan = document.getElementById('meshActive');
+            const meshAccessUrl = document.getElementById('meshAccessUrl');
+            
+            if (meshType !== 'none' && (config.mesh_host || config.mesh_custom_url)) {
+                let accessUrl = config.mesh_custom_url || `http://${config.mesh_host}:${config.mesh_port || 5000}`;
+                meshUrlDisplay.style.display = 'block';
+                meshUrlSpan.textContent = accessUrl;
+                meshActiveSpan.style.color = '#10b981';
+                meshActiveSpan.textContent = meshType.charAt(0).toUpperCase() + meshType.slice(1) + ' Configured';
+                meshAccessUrl.textContent = accessUrl;
+            } else {
+                meshUrlDisplay.style.display = 'none';
+                meshActiveSpan.style.color = '#94a3b8';
+                meshActiveSpan.textContent = 'Not Configured';
+                meshAccessUrl.textContent = '-';
+            }
+            
+            updateVpnUI(config);
+        }
+
+        function toggleVpnFields() {
+            const vpnProvider = document.getElementById('vpnProvider').value;
+            const vpnFields = document.getElementById('vpnFields');
+            const customVpnConfig = document.getElementById('customVpnConfig');
+            
+            if (vpnProvider === 'none') {
+                vpnFields.style.display = 'none';
+            } else {
+                vpnFields.style.display = 'block';
+                customVpnConfig.style.display = (vpnProvider === 'openvpn' || vpnProvider === 'wireguard') ? 'block' : 'none';
+            }
+        }
+
+        async function saveVpnSettings() {
+            const vpnProvider = document.getElementById('vpnProvider').value;
+            const vpnServer = document.getElementById('vpnServer').value;
+            const vpnUsername = document.getElementById('vpnUsername').value;
+            const vpnPassword = document.getElementById('vpnPassword').value;
+            const vpnConfigPath = document.getElementById('vpnConfigPath').value;
+
+            try {
+                const response = await fetch('/api/network/vpn/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vpn_provider: vpnProvider,
+                        vpn_server: vpnServer,
+                        vpn_username: vpnUsername,
+                        vpn_password: vpnPassword,
+                        vpn_config_path: vpnConfigPath
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('VPN settings saved!');
+                    refreshNetworkStatus();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) { alert('Error saving VPN settings: ' + e.message); }
+        }
+
+        function updateVpnUI(config) {
+            const vpnProvider = config.vpn_provider || 'none';
+            document.getElementById('vpnProvider').value = vpnProvider;
+            document.getElementById('vpnServer').value = config.vpn_server || '';
+            document.getElementById('vpnUsername').value = config.vpn_username || '';
+            document.getElementById('vpnConfigPath').value = config.vpn_config_path || '';
+            
+            toggleVpnFields();
+            
+            const vpnActiveSpan = document.getElementById('vpnActive');
+            const vpnProviderName = document.getElementById('vpnProviderName');
+            
+            if (vpnProvider !== 'none') {
+                vpnActiveSpan.style.color = '#10b981';
+                vpnActiveSpan.textContent = 'Configured';
+                vpnProviderName.textContent = vpnProvider.charAt(0).toUpperCase() + vpnProvider.slice(1);
+            } else {
+                vpnActiveSpan.style.color = '#94a3b8';
+                vpnActiveSpan.textContent = 'Not Configured';
+                vpnProviderName.textContent = '-';
+            }
+        }
+
+        checkStatus();
+        setInterval(checkStatus, 30000);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(() => console.log('Service Worker registered for offline support'))
+                .catch((err) => console.log('Service Worker registration failed:', err));
+        }
+    </script>
+</body>
+</html>

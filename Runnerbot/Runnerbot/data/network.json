@@ -1,0 +1,17 @@
+{
+  "host": "0.0.0.0",
+  "port": 5000,
+  "tunnel_enabled": false,
+  "tunnel_service": "none",
+  "tunnel_authtoken": "",
+  "tunnel_url": "",
+  "mesh_type": "none",
+  "mesh_host": "",
+  "mesh_port": 5000,
+  "mesh_custom_url": "",
+  "mesh_network_id": "",
+  "vpn_provider": "none",
+  "vpn_server": "",
+  "vpn_username": "",
+  "vpn_config_path": ""
+}

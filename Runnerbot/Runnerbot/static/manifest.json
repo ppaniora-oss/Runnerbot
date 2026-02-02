@@ -1,0 +1,21 @@
+{
+  "name": "Runnerbot",
+  "short_name": "Runnerbot",
+  "description": "Run AI models locally from your USB, SSD, or HDD",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/static/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
