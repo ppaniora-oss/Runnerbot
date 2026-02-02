@@ -1,6 +1,4 @@
 # Runnerbot
-Runnerbot is a powerful, fully portable AI platform that enables you to run AI models locally without relying on cloud services. All your data stays on your device, ensuring complete privacy and offline capability.
-🤖 Runnerbot
 A powerful, fully portable AI platform for running AI models locally with complete privacy
 Runnerbot enables you to run AI models locally without relying on cloud services. All your data stays on your device, ensuring complete privacy and offline capability. Perfect for developers, researchers, and privacy-conscious users who want full control over their AI workflows.
 
