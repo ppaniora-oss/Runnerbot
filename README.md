@@ -107,7 +107,7 @@ Error messages or logs
 
 📊 Performance
 Runnerbot is optimized for local inference with the following benchmarks:
-Model SizeRAM UsageCPU InferenceGPU InferenceSmall (< 1GB)~2GB~50ms~10msMedium (1-5GB)~6GB~200ms~30msLarge (5-10GB)~12GB~500ms~80ms
+Model SizeRAM UsageCPU InferenceGPU Inference Small (< 1GB)~2GB~50ms~10ms Medium (1-5GB)~6GB~200ms~30ms Large (5-10GB)~12GB~500ms~80ms
 Benchmarks measured on Intel i7-12700K CPU and NVIDIA RTX 3080 GPU
 
 🔐 Security & Privacy
